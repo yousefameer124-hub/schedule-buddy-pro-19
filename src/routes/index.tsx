@@ -135,10 +135,14 @@ function Index() {
     return activeTherapists.map((t) => ({
       id: `${key}|${t.id}`,
       label: t.name,
-      sublabel: "Physiotherapist",
       appointments: visible.filter((a) => a.date === key && a.therapistId === t.id),
     }));
   };
+
+  const countForDay = (d: Date) => visible.filter((a) => a.date === dateKey(d)).length;
+
+  const nowMinutes = today.getHours() * 60 + today.getMinutes();
+  const nowFor = (d: Date) => (isSameDay(d, today) ? nowMinutes : undefined);
 
   const openSlot = (rowId: string, minutes: number) => {
     const [date, therapistId] = rowId.split("|");
@@ -210,7 +214,8 @@ function Index() {
                 <Phone className="h-3.5 w-3.5" /> 011 48008620
               </a>
               <span className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" /> Open · closes 10 PM
+                <Clock className="h-3.5 w-3.5" /> {minutesToLabel(config.dayStart)} –{" "}
+                {minutesToLabel(config.dayEnd % (24 * 60))}
               </span>
             </p>
           </div>
@@ -304,11 +309,12 @@ function Index() {
             rows={rowsForDay(anchor)}
             ticks={ticksForDay(anchor)}
             dayEnd={config.dayEnd}
+            now={nowFor(anchor)}
             onSlotClick={openSlot}
             onEventClick={openEvent}
           />
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {days.map((d) => (
               <section key={dateKey(d)}>
                 <h3
@@ -323,11 +329,15 @@ function Index() {
                       Today
                     </span>
                   )}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {countForDay(d)} session{countForDay(d) === 1 ? "" : "s"}
+                  </span>
                 </h3>
                 <TimelineGrid
                   rows={rowsForDay(d)}
                   ticks={ticksForDay(d)}
                   dayEnd={config.dayEnd}
+                  now={nowFor(d)}
                   onSlotClick={openSlot}
                   onEventClick={openEvent}
                 />
