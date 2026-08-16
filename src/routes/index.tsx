@@ -18,13 +18,15 @@ import { toast } from "sonner";
 import { TimelineGrid, type Row } from "@/components/TimelineGrid";
 import { AppointmentDialog, type Draft } from "@/components/AppointmentDialog";
 import {
+  ATTENDANCE_STATUSES,
   DAY_START,
+  DEFAULT_DURATION,
   SESSION_TYPES,
   THERAPISTS,
   dateKey,
   minutesToLabel,
-  overlaps,
   seedAppointments,
+  statusBadge,
   typeClass,
   weekDays,
   type Appointment,
@@ -99,11 +101,6 @@ function Index() {
     }));
   };
 
-  const conflict = (d: Draft) => {
-    const candidate = { ...d, id: d.id ?? "tmp" } as Appointment;
-    return appointments.some((a) => a.id !== d.id && overlaps(a, candidate));
-  };
-
   const openSlot = (rowId: string, minutes: number) => {
     const [date, therapistId] = rowId.split("|");
     setDraft({
@@ -112,7 +109,8 @@ function Index() {
       type: "physio",
       date: date ?? dateKey(anchor),
       start: minutes,
-      duration: 45,
+      duration: DEFAULT_DURATION,
+      status: "scheduled",
     });
     setOpen(true);
   };
@@ -296,9 +294,21 @@ function Index() {
           ))}
         </div>
 
+        <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+          {ATTENDANCE_STATUSES.map((s) => (
+            <span key={s.id} className="flex items-center gap-1.5">
+              <span className={cn("rounded-sm px-1.5 py-0.5 text-[10px]", statusBadge(s.id))}>
+                {s.short}
+              </span>
+            </span>
+          ))}
+        </div>
+
         <p className="mt-6 text-xs text-muted-foreground">
           Click any empty slot to book a session, or click a session to reschedule it. Working hours
-          9:00 AM – 10:00 PM. Double bookings for the same therapist are blocked automatically.
+          9:00 AM – 10:00 PM. Sessions default to 60 minutes, and a therapist can take several
+          patients in the same time range — parallel bookings stack inside the row. Mark each
+          patient as showed up, cancelled or no show from the appointment dialog.
         </p>
       </main>
 
@@ -308,7 +318,6 @@ function Index() {
         onOpenChange={setOpen}
         onSave={save}
         onDelete={remove}
-        conflict={conflict}
       />
     </div>
   );

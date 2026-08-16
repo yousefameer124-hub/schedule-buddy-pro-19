@@ -23,11 +23,13 @@ import {
 import {
   DAY_END,
   DAY_START,
+  ATTENDANCE_STATUSES,
   SESSION_TYPES,
   SLOT,
   THERAPISTS,
   minutesToLabel,
   type Appointment,
+  type AttendanceStatus,
   type SessionType,
 } from "@/lib/schedule";
 
@@ -46,14 +48,12 @@ export function AppointmentDialog({
   onOpenChange,
   onSave,
   onDelete,
-  conflict,
 }: {
   draft: Draft | null;
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onSave: (d: Draft) => void;
   onDelete: (id: string) => void;
-  conflict: (d: Draft) => boolean;
 }) {
   const [value, setValue] = useState<Draft | null>(draft);
 
@@ -61,7 +61,6 @@ export function AppointmentDialog({
 
   if (!value) return null;
 
-  const clash = conflict(value);
   const isNew = !value.id;
 
   return (
@@ -165,6 +164,25 @@ export function AppointmentDialog({
           </div>
 
           <div className="grid gap-2">
+            <Label>Attendance</Label>
+            <Select
+              value={value.status ?? "scheduled"}
+              onValueChange={(v) => setValue({ ...value, status: v as AttendanceStatus })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ATTENDANCE_STATUSES.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2">
             <Label htmlFor="phone">Phone</Label>
             <Input
               id="phone"
@@ -185,11 +203,6 @@ export function AppointmentDialog({
             />
           </div>
 
-          {clash && (
-            <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              This therapist already has a session in that time range.
-            </p>
-          )}
         </div>
 
         <DialogFooter className="sm:justify-between">
@@ -206,7 +219,7 @@ export function AppointmentDialog({
               Cancel
             </Button>
             <Button
-              disabled={clash || value.patient.trim().length === 0}
+              disabled={value.patient.trim().length === 0}
               onClick={() => onSave(value)}
             >
               {isNew ? "Book session" : "Save"}
