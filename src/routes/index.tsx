@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { ScheduleGrid, type Column } from "@/components/ScheduleGrid";
+import { TimelineGrid, type Row } from "@/components/TimelineGrid";
 import { AppointmentDialog, type Draft } from "@/components/AppointmentDialog";
 import {
   DAY_START,
@@ -83,46 +83,42 @@ function Index() {
 
   const days = useMemo(() => weekDays(anchor), [anchor]);
 
-  const columns: Column[] = useMemo(() => {
-    if (view === "week") {
-      return days.map((d) => ({
-        id: dateKey(d),
-        label: format(d, "EEE"),
-        sublabel: format(d, "d MMM"),
-        highlight: isSameDay(d, today),
-        appointments: visible.filter((a) => a.date === dateKey(d)),
-      }));
-    }
-    const key = dateKey(anchor);
-    const active =
-      therapistFilter === "all" ? THERAPISTS : THERAPISTS.filter((t) => t.id === therapistFilter);
-    return active.map((t) => ({
-      id: t.id,
-      label: t.name.replace("Dr. ", ""),
-      sublabel: "Therapist",
+  const activeTherapists = useMemo(
+    () =>
+      therapistFilter === "all" ? THERAPISTS : THERAPISTS.filter((t) => t.id === therapistFilter),
+    [therapistFilter],
+  );
+
+  const rowsForDay = (d: Date): Row[] => {
+    const key = dateKey(d);
+    return activeTherapists.map((t) => ({
+      id: `${key}|${t.id}`,
+      label: t.name,
+      sublabel: "Physiotherapist",
       appointments: visible.filter((a) => a.date === key && a.therapistId === t.id),
     }));
-  }, [view, days, visible, today, anchor, therapistFilter]);
+  };
 
   const conflict = (d: Draft) => {
     const candidate = { ...d, id: d.id ?? "tmp" } as Appointment;
     return appointments.some((a) => a.id !== d.id && overlaps(a, candidate));
   };
 
-  const openSlot = (columnId: string, minutes: number) => {
-    const isWeek = view === "week";
+  const openSlot = (rowId: string, minutes: number) => {
+    const [date, therapistId] = rowId.split("|");
     setDraft({
       patient: "",
-      therapistId: isWeek
-        ? therapistFilter === "all"
-          ? THERAPISTS[0]!.id
-          : therapistFilter
-        : columnId,
+      therapistId: therapistId ?? THERAPISTS[0]!.id,
       type: "physio",
-      date: isWeek ? columnId : dateKey(anchor),
+      date: date ?? dateKey(anchor),
       start: minutes,
       duration: 45,
     });
+    setOpen(true);
+  };
+
+  const openEvent = (a: Appointment) => {
+    setDraft(a);
     setOpen(true);
   };
 
@@ -223,9 +219,7 @@ function Index() {
               ))}
             </div>
             <Button
-              onClick={() =>
-                openSlot(view === "week" ? dateKey(anchor) : THERAPISTS[0]!.id, DAY_START)
-              }
+              onClick={() => openSlot(`${dateKey(anchor)}|${activeTherapists[0]!.id}`, DAY_START)}
             >
               <Plus className="mr-2 h-4 w-4" />
               New appointment
@@ -264,14 +258,34 @@ function Index() {
           </span>
         </div>
 
-        <ScheduleGrid
-          columns={columns}
-          onSlotClick={openSlot}
-          onEventClick={(a) => {
-            setDraft(a);
-            setOpen(true);
-          }}
-        />
+        {view === "day" ? (
+          <TimelineGrid rows={rowsForDay(anchor)} onSlotClick={openSlot} onEventClick={openEvent} />
+        ) : (
+          <div className="space-y-4">
+            {days.map((d) => (
+              <section key={dateKey(d)}>
+                <h3
+                  className={cn(
+                    "mb-1.5 flex items-center gap-2 text-sm font-semibold",
+                    isSameDay(d, today) && "text-primary",
+                  )}
+                >
+                  {format(d, "EEEE d MMM")}
+                  {isSameDay(d, today) && (
+                    <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-primary-foreground">
+                      Today
+                    </span>
+                  )}
+                </h3>
+                <TimelineGrid
+                  rows={rowsForDay(d)}
+                  onSlotClick={openSlot}
+                  onEventClick={openEvent}
+                />
+              </section>
+            ))}
+          </div>
+        )}
 
         <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
           {SESSION_TYPES.map((t) => (
