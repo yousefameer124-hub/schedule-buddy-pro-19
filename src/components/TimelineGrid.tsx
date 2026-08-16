@@ -43,7 +43,7 @@ export function TimelineGrid({
   ticks: number[];
   dayEnd: number;
   /** minutes from midnight for the "now" marker, when this grid shows today */
-  now?: number;
+  now?: number | undefined;
   onSlotClick: (rowId: string, minutes: number) => void;
   onEventClick: (appointment: Appointment) => void;
 }) {
