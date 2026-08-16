@@ -21,24 +21,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DAY_END,
-  DAY_START,
   ATTENDANCE_STATUSES,
   SESSION_TYPES,
   SLOT,
-  THERAPISTS,
   minutesToLabel,
   type Appointment,
+  type Therapist,
   type AttendanceStatus,
   type SessionType,
 } from "@/lib/schedule";
 
 export type Draft = Omit<Appointment, "id"> & { id?: string };
-
-const slotOptions = Array.from(
-  { length: (DAY_END - DAY_START) / SLOT },
-  (_, i) => DAY_START + i * SLOT,
-);
 
 const durations = [30, 45, 60, 90, 120];
 
@@ -48,12 +41,18 @@ export function AppointmentDialog({
   onOpenChange,
   onSave,
   onDelete,
+  therapists,
+  dayStart,
+  dayEnd,
 }: {
   draft: Draft | null;
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onSave: (d: Draft) => void;
   onDelete: (id: string) => void;
+  therapists: Therapist[];
+  dayStart: number;
+  dayEnd: number;
 }) {
   const [value, setValue] = useState<Draft | null>(draft);
 
@@ -62,6 +61,13 @@ export function AppointmentDialog({
   if (!value) return null;
 
   const isNew = !value.id;
+  const slotOptions = Array.from(
+    { length: Math.max(1, Math.ceil((dayEnd - dayStart) / SLOT)) },
+    (_, i) => dayStart + i * SLOT,
+  );
+  const startOptions = slotOptions.includes(value.start)
+    ? slotOptions
+    : [...slotOptions, value.start].sort((a, b) => a - b);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -96,7 +102,7 @@ export function AppointmentDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {slotOptions.map((s) => (
+                  {startOptions.map((s) => (
                     <SelectItem key={s} value={String(s)}>
                       {minutesToLabel(s)}
                     </SelectItem>
@@ -135,7 +141,7 @@ export function AppointmentDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {THERAPISTS.map((t) => (
+                  {therapists.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.name}
                     </SelectItem>

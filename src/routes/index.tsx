@@ -9,6 +9,7 @@ import {
   MapPin,
   Phone,
   Plus,
+  Settings,
   Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,12 +18,14 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { TimelineGrid, type Row } from "@/components/TimelineGrid";
 import { AppointmentDialog, type Draft } from "@/components/AppointmentDialog";
+import { SettingsDialog } from "@/components/SettingsDialog";
 import {
   ATTENDANCE_STATUSES,
-  DAY_START,
+  DEFAULT_CONFIG,
   DEFAULT_DURATION,
   SESSION_TYPES,
   THERAPISTS,
+  buildTicks,
   dateKey,
   minutesToLabel,
   seedAppointments,
@@ -30,6 +33,8 @@ import {
   typeClass,
   weekDays,
   type Appointment,
+  type ClinicConfig,
+  type Therapist,
 } from "@/lib/schedule";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +55,7 @@ export const Route = createFileRoute("/")({
 });
 
 const STORAGE_KEY = "physio360-appointments";
+const SETTINGS_KEY = "physio360-settings";
 
 function Index() {
   const today = useMemo(() => new Date(), []);
@@ -59,6 +65,9 @@ function Index() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [open, setOpen] = useState(false);
   const [therapistFilter, setTherapistFilter] = useState<string | "all">("all");
+  const [therapists, setTherapists] = useState<Therapist[]>(THERAPISTS);
+  const [config, setConfig] = useState<ClinicConfig>(DEFAULT_CONFIG);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -72,8 +81,32 @@ function Index() {
   }, []);
 
   useEffect(() => {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as { therapists?: Therapist[]; config?: ClinicConfig };
+        if (parsed.therapists?.length) setTherapists(parsed.therapists);
+        if (parsed.config) setConfig(parsed.config);
+      } catch {
+        /* ignore corrupt storage */
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(appointments));
   }, [appointments]);
+
+  const saveSettings = (list: Therapist[], next: ClinicConfig) => {
+    setTherapists(list);
+    setConfig(next);
+    if (therapistFilter !== "all" && !list.some((t) => t.id === therapistFilter)) {
+      setTherapistFilter("all");
+    }
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ therapists: list, config: next }));
+    setSettingsOpen(false);
+    toast.success("Settings saved");
+  };
 
   const visible = useMemo(
     () =>
@@ -87,9 +120,15 @@ function Index() {
 
   const activeTherapists = useMemo(
     () =>
-      therapistFilter === "all" ? THERAPISTS : THERAPISTS.filter((t) => t.id === therapistFilter),
-    [therapistFilter],
+      therapistFilter === "all" ? therapists : therapists.filter((t) => t.id === therapistFilter),
+    [therapists, therapistFilter],
   );
+
+  const ticksForDay = (d: Date) => {
+    const key = dateKey(d);
+    const extras = visible.filter((a) => a.date === key).map((a) => a.start);
+    return buildTicks(config.dayStart, config.dayEnd, extras);
+  };
 
   const rowsForDay = (d: Date): Row[] => {
     const key = dateKey(d);
@@ -105,7 +144,7 @@ function Index() {
     const [date, therapistId] = rowId.split("|");
     setDraft({
       patient: "",
-      therapistId: therapistId ?? THERAPISTS[0]!.id,
+      therapistId: therapistId ?? therapists[0]!.id,
       type: "physio",
       date: date ?? dateKey(anchor),
       start: minutes,
@@ -216,8 +255,12 @@ function Index() {
                 </button>
               ))}
             </div>
+            <Button variant="outline" onClick={() => setSettingsOpen(true)}>
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </Button>
             <Button
-              onClick={() => openSlot(`${dateKey(anchor)}|${activeTherapists[0]!.id}`, DAY_START)}
+              onClick={() => openSlot(`${dateKey(anchor)}|${activeTherapists[0]!.id}`, config.dayStart)}
             >
               <Plus className="mr-2 h-4 w-4" />
               New appointment
@@ -237,7 +280,7 @@ function Index() {
           >
             All therapists
           </button>
-          {THERAPISTS.map((t) => (
+          {therapists.map((t) => (
             <button
               key={t.id}
               onClick={() => setTherapistFilter(t.id)}
@@ -257,7 +300,13 @@ function Index() {
         </div>
 
         {view === "day" ? (
-          <TimelineGrid rows={rowsForDay(anchor)} onSlotClick={openSlot} onEventClick={openEvent} />
+          <TimelineGrid
+            rows={rowsForDay(anchor)}
+            ticks={ticksForDay(anchor)}
+            dayEnd={config.dayEnd}
+            onSlotClick={openSlot}
+            onEventClick={openEvent}
+          />
         ) : (
           <div className="space-y-4">
             {days.map((d) => (
@@ -277,6 +326,8 @@ function Index() {
                 </h3>
                 <TimelineGrid
                   rows={rowsForDay(d)}
+                  ticks={ticksForDay(d)}
+                  dayEnd={config.dayEnd}
                   onSlotClick={openSlot}
                   onEventClick={openEvent}
                 />
@@ -306,7 +357,9 @@ function Index() {
 
         <p className="mt-6 text-xs text-muted-foreground">
           Click any empty slot to book a session, or click a session to reschedule it. Working hours
-          9:00 AM – 10:00 PM. Sessions default to 60 minutes, and a therapist can take several
+          {minutesToLabel(config.dayStart)} – {minutesToLabel(config.dayEnd % (24 * 60))}, editable
+          in Settings along with the doctor list. Only whole hours get a column; an extra column
+          appears when a patient is booked at 12:30 or any other off-hour time. Sessions default to 60 minutes, and a therapist can take several
           patients in the same time range — parallel bookings stack inside the row. Mark each
           patient as showed up, cancelled or no show from the appointment dialog.
         </p>
@@ -318,6 +371,17 @@ function Index() {
         onOpenChange={setOpen}
         onSave={save}
         onDelete={remove}
+        therapists={therapists}
+        dayStart={config.dayStart}
+        dayEnd={config.dayEnd}
+      />
+
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        therapists={therapists}
+        config={config}
+        onSave={saveSettings}
       />
     </div>
   );

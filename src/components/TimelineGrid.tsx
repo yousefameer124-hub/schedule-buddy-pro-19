@@ -1,13 +1,9 @@
 import { cn } from "@/lib/utils";
-import {
-  DAY_END,
-  DAY_START,
-  SLOT,
-  minutesToLabel,
-  statusBadge,
-  typeClass,
-  type Appointment,
-} from "@/lib/schedule";
+import { minutesToLabel, statusBadge, typeClass, type Appointment } from "@/lib/schedule";
+
+export const SLOT_WIDTH = 84;
+export const ROW_HEIGHT = 56;
+const LANE_HEIGHT = 26;
 
 /** assign each appointment a lane so simultaneous patients stack instead of overlap */
 const layout = (list: Appointment[]) => {
@@ -25,12 +21,6 @@ const layout = (list: Appointment[]) => {
   return { placed, lanes: Math.max(1, laneEnds.length) };
 };
 
-export const SLOT_WIDTH = 56;
-export const ROW_HEIGHT = 56;
-const LANE_HEIGHT = 26;
-
-const slots = Array.from({ length: (DAY_END - DAY_START) / SLOT }, (_, i) => DAY_START + i * SLOT);
-
 export type Row = {
   id: string;
   label: string;
@@ -41,16 +31,43 @@ export type Row = {
 
 export function TimelineGrid({
   rows,
+  ticks,
+  dayEnd,
   onSlotClick,
   onEventClick,
 }: {
   rows: Row[];
+  /** column start minutes: whole hours plus any off-hour appointment start */
+  ticks: number[];
+  dayEnd: number;
   onSlotClick: (rowId: string, minutes: number) => void;
   onEventClick: (appointment: Appointment) => void;
 }) {
-  const width = slots.length * SLOT_WIDTH;
+  const ends = ticks.map((t, i) => ticks[i + 1] ?? dayEnd);
+  const width = ticks.length * SLOT_WIDTH;
+
   const laid = rows.map((r) => layout(r.appointments));
   const heights = laid.map(({ lanes }) => Math.max(ROW_HEIGHT, lanes * LANE_HEIGHT + 12));
+
+  /** pixel offset / width for an appointment across variable-length columns */
+  const place = (start: number, duration: number) => {
+    const end = start + duration;
+    let left = 0;
+    let w = 0;
+    ticks.forEach((t, i) => {
+      const colEnd = ends[i]!;
+      const span = Math.max(1, colEnd - t);
+      if (colEnd <= start) {
+        left += SLOT_WIDTH;
+        return;
+      }
+      if (t >= end) return;
+      if (t < start) left += ((start - t) / span) * SLOT_WIDTH;
+      const covered = Math.min(colEnd, end) - Math.max(t, start);
+      w += (covered / span) * SLOT_WIDTH;
+    });
+    return { left, width: Math.max(24, w) };
+  };
 
   return (
     <div className="overflow-x-auto rounded-xl border bg-card">
@@ -80,7 +97,7 @@ export function TimelineGrid({
         {/* time columns */}
         <div style={{ width }}>
           <div className="flex h-12 border-b">
-            {slots.map((m) => (
+            {ticks.map((m) => (
               <div
                 key={m}
                 style={{ width: SLOT_WIDTH }}
@@ -103,7 +120,7 @@ export function TimelineGrid({
               className={cn("relative border-b", r.highlight && "bg-today")}
             >
               <div className="flex h-full">
-                {slots.map((m) => (
+                {ticks.map((m) => (
                   <button
                     key={m}
                     type="button"
@@ -119,16 +136,15 @@ export function TimelineGrid({
               </div>
 
               {laid[ri]!.placed.map(({ a, lane }) => {
-                const left = ((a.start - DAY_START) / SLOT) * SLOT_WIDTH;
-                const w = (a.duration / SLOT) * SLOT_WIDTH;
+                const pos = place(a.start, a.duration);
                 return (
                   <button
                     key={a.id}
                     type="button"
                     onClick={() => onEventClick(a)}
                     style={{
-                      left: left + 2,
-                      width: w - 4,
+                      left: pos.left + 2,
+                      width: Math.max(24, pos.width - 4),
                       top: 6 + lane * LANE_HEIGHT,
                       height: LANE_HEIGHT - 4,
                     }}
