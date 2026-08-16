@@ -144,7 +144,7 @@ export function TimelineGrid({
                     onClick={() => onEventClick(a)}
                     style={{
                       left: pos.left + 2,
-                      width: Math.max(24, pos.width - 4),
+                      width: Math.max(116, pos.width - 4),
                       top: 6 + lane * LANE_HEIGHT,
                       height: LANE_HEIGHT - 4,
                     }}
