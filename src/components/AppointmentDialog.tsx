@@ -21,12 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DAY_END,
-  DAY_START,
   ATTENDANCE_STATUSES,
   SESSION_TYPES,
   SLOT,
-  THERAPISTS,
   minutesToLabel,
   type Appointment,
   type Therapist,
