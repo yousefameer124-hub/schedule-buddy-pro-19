@@ -50,8 +50,45 @@ export const SESSION_TYPES: { id: SessionType; label: string }[] = [
   { id: "blocked", label: "Blocked / unavailable" },
 ];
 
-export const DAY_START = 9 * 60;
-export const DAY_END = 22 * 60;
+/** clinic opens at 12 PM and closes at 12 AM by default */
+export const DEFAULT_DAY_START = 12 * 60;
+export const DEFAULT_DAY_END = 24 * 60;
+
+export type ClinicConfig = {
+  dayStart: number;
+  dayEnd: number;
+};
+
+export const DEFAULT_CONFIG: ClinicConfig = {
+  dayStart: DEFAULT_DAY_START,
+  dayEnd: DEFAULT_DAY_END,
+};
+
+export const HOUR_OPTIONS = Array.from({ length: 25 }, (_, h) => h * 60);
+
+export const initialsFrom = (name: string) =>
+  name
+    .replace(/^dr\.?\s*/i, "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join("") || "DR";
+
+/**
+ * Columns are whole hours only; a half-hour (or any off-hour) column appears
+ * solely when an appointment actually starts at that minute.
+ */
+export const buildTicks = (
+  dayStart: number,
+  dayEnd: number,
+  extraStarts: number[] = [],
+): number[] => {
+  const set = new Set<number>();
+  for (let m = Math.floor(dayStart / 60) * 60; m < dayEnd; m += 60) set.add(m);
+  for (const m of extraStarts) if (m >= dayStart && m < dayEnd) set.add(m);
+  return [...set].sort((a, b) => a - b);
+};
 export const SLOT = 30;
 export const DEFAULT_DURATION = 60;
 export const SLOT_HEIGHT = 28;
@@ -106,21 +143,21 @@ export const seedAppointments = (anchor: Date): Appointment[] => {
   });
 
   return [
-    mk(0, 9 * 60, 60, "Ahmed Selim", "t1", "evaluation"),
-    mk(0, 9 * 60, 60, "Farida Gamal", "t1", "physio"),
-    mk(0, 11 * 60, 60, "Mariam Adly", "t2", "physio"),
-    mk(1, 10 * 60 + 30, 60, "Youssef Tarek", "t1", "sports"),
-    mk(1, 10 * 60 + 30, 60, "Dina Fawzy", "t4", "physio"),
-    mk(2, 14 * 60, 60, "Amr Hosny", "t5", "rehab"),
-    mk(3, 11 * 60, 60, "Rana Adel", "t6", "physio"),
-    mk(1, 13 * 60, 90, "Hana Ibrahim", "t3", "rehab"),
-    mk(2, 12 * 60, 60, "Omar Zaki", "t2", "physio"),
-    mk(2, 17 * 60, 60, "Salma Ashraf", "t1", "sports"),
-    mk(3, 15 * 60, 120, "Team training block", "t3", "blocked"),
-    mk(4, 9 * 60 + 30, 60, "Nada Wael", "t2", "evaluation"),
-    mk(4, 18 * 60, 60, "Khaled Rami", "t1", "rehab"),
-    mk(5, 16 * 60, 60, "Laila Sami", "t3", "physio"),
-    mk(6, 11 * 60, 60, "Tamer Nabil", "t1", "sports"),
+    mk(0, 12 * 60, 60, "Ahmed Selim", "t1", "evaluation"),
+    mk(0, 12 * 60, 60, "Farida Gamal", "t1", "physio"),
+    mk(0, 14 * 60, 60, "Mariam Adly", "t2", "physio"),
+    mk(1, 13 * 60, 60, "Youssef Tarek", "t1", "sports"),
+    mk(1, 13 * 60, 60, "Dina Fawzy", "t4", "physio"),
+    mk(1, 16 * 60 + 30, 90, "Hana Ibrahim", "t3", "rehab"),
+    mk(2, 15 * 60, 60, "Omar Zaki", "t2", "physio"),
+    mk(2, 18 * 60, 60, "Amr Hosny", "t5", "rehab"),
+    mk(2, 20 * 60, 60, "Salma Ashraf", "t1", "sports"),
+    mk(3, 17 * 60, 120, "Team training block", "t3", "blocked"),
+    mk(3, 14 * 60, 60, "Rana Adel", "t6", "physio"),
+    mk(4, 12 * 60 + 30, 60, "Nada Wael", "t2", "evaluation"),
+    mk(4, 21 * 60, 60, "Khaled Rami", "t1", "rehab"),
+    mk(5, 19 * 60, 60, "Laila Sami", "t3", "physio"),
+    mk(6, 13 * 60, 60, "Tamer Nabil", "t1", "sports"),
   ];
 };
 
