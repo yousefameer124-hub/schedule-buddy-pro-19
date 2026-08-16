@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { addDays, format, isSameDay, startOfWeek } from "date-fns";
+import { addDays, format, isSameDay } from "date-fns";
 import {
   CalendarDays,
   ChevronLeft,
@@ -299,6 +299,3 @@ function Index() {
     </div>
   );
 }
-
-// keep import used for week start reference in helpers
-void startOfWeek;
