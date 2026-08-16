@@ -86,7 +86,7 @@ export const seedAppointments = (anchor: Date): Appointment[] => {
     patient,
     therapistId,
     type,
-    date: dateKey(d[i]),
+    date: dateKey(d[i]!),
     start,
     duration,
   });
