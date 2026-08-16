@@ -66,7 +66,7 @@ export function TimelineGrid({
       const covered = Math.min(colEnd, end) - Math.max(t, start);
       w += (covered / span) * SLOT_WIDTH;
     });
-    return { left, width: Math.max(24, w) };
+    return { left, width: Math.max(120, w) };
   };
 
   return (
@@ -144,7 +144,7 @@ export function TimelineGrid({
                     onClick={() => onEventClick(a)}
                     style={{
                       left: pos.left + 2,
-                      width: Math.max(24, pos.width - 4),
+                      width: Math.max(116, pos.width - 4),
                       top: 6 + lane * LANE_HEIGHT,
                       height: LANE_HEIGHT - 4,
                     }}
@@ -166,10 +166,7 @@ export function TimelineGrid({
                         {a.status === "showed" ? "✓" : a.status === "cancelled" ? "✕" : "!"}
                       </span>
                     )}
-                    <span className="flex flex-col gap-0.5 overflow-hidden">
-                      <span className="whitespace-normal break-words font-semibold leading-snug">{a.patient}</span>
-                      <span className="shrink-0 opacity-90">{minutesToLabel(a.start)}</span>
-                    </span>
+                    <span className="whitespace-normal break-words font-semibold leading-snug">{a.patient}</span>
                   </button>
                 );
               })}
