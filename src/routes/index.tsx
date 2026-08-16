@@ -135,10 +135,14 @@ function Index() {
     return activeTherapists.map((t) => ({
       id: `${key}|${t.id}`,
       label: t.name,
-      sublabel: "Physiotherapist",
       appointments: visible.filter((a) => a.date === key && a.therapistId === t.id),
     }));
   };
+
+  const countForDay = (d: Date) => visible.filter((a) => a.date === dateKey(d)).length;
+
+  const nowMinutes = today.getHours() * 60 + today.getMinutes();
+  const nowFor = (d: Date) => (isSameDay(d, today) ? nowMinutes : undefined);
 
   const openSlot = (rowId: string, minutes: number) => {
     const [date, therapistId] = rowId.split("|");
