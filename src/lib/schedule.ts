@@ -123,3 +123,11 @@ export const seedAppointments = (anchor: Date): Appointment[] => {
     mk(6, 11 * 60, 60, "Tamer Nabil", "t1", "sports"),
   ];
 };
+
+export const statusBadge = (s: AttendanceStatus | undefined) =>
+  ({
+    scheduled: "bg-foreground/10 text-foreground",
+    showed: "bg-event-physio text-event-physio-foreground",
+    cancelled: "bg-destructive text-destructive-foreground",
+    noshow: "bg-event-sports text-event-sports-foreground",
+  })[s ?? "scheduled"];
