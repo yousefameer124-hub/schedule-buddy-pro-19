@@ -77,11 +77,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "360 Physio Clinic ALREHAB — Scheduling" },
+      {
+        name: "description",
+        content:
+          "Appointment scheduling calendar for 360 Physio Clinic ALREHAB, New Cairo.",
+      },
+      { name: "author", content: "360 Physio Clinic ALREHAB" },
+      { property: "og:title", content: "360 Physio Clinic ALREHAB — Scheduling" },
+      {
+        property: "og:description",
+        content:
+          "Appointment scheduling calendar for 360 Physio Clinic ALREHAB, New Cairo.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
