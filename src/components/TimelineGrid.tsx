@@ -3,7 +3,7 @@ import { minutesToLabel, statusBadge, typeClass, type Appointment } from "@/lib/
 
 export const SLOT_WIDTH = 84;
 export const ROW_HEIGHT = 56;
-const LANE_HEIGHT = 26;
+const LANE_HEIGHT = 44;
 
 /** assign each appointment a lane so simultaneous patients stack instead of overlap */
 const layout = (list: Appointment[]) => {
@@ -149,7 +149,7 @@ export function TimelineGrid({
                       height: LANE_HEIGHT - 4,
                     }}
                     className={cn(
-                      "absolute flex items-center gap-1 overflow-hidden rounded-md px-2 text-left text-[11px] leading-tight shadow-sm ring-1 ring-black/5 transition-transform hover:scale-[1.01]",
+                      "absolute flex items-start gap-1 overflow-hidden rounded-md px-2 py-1 text-left text-[11px] leading-tight shadow-sm ring-1 ring-black/5 transition-transform hover:scale-[1.01]",
                       typeClass(a.type),
                       a.status === "cancelled" && "line-through opacity-60",
                       a.status === "noshow" && "opacity-70",
@@ -159,15 +159,17 @@ export function TimelineGrid({
                     {a.status && a.status !== "scheduled" && (
                       <span
                         className={cn(
-                          "shrink-0 rounded-sm px-1 text-[9px] no-underline",
+                          "mt-0.5 shrink-0 rounded-sm px-1 text-[9px] no-underline",
                           statusBadge(a.status),
                         )}
                       >
                         {a.status === "showed" ? "✓" : a.status === "cancelled" ? "✕" : "!"}
                       </span>
                     )}
-                    <span className="truncate font-semibold">{a.patient}</span>
-                    <span className="ml-auto shrink-0 opacity-90">{minutesToLabel(a.start)}</span>
+                    <span className="flex flex-col gap-0.5 overflow-hidden">
+                      <span className="whitespace-normal break-words font-semibold leading-snug">{a.patient}</span>
+                      <span className="shrink-0 opacity-90">{minutesToLabel(a.start)}</span>
+                    </span>
                   </button>
                 );
               })}
