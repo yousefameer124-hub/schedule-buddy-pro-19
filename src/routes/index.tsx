@@ -308,11 +308,12 @@ function Index() {
             rows={rowsForDay(anchor)}
             ticks={ticksForDay(anchor)}
             dayEnd={config.dayEnd}
+            now={nowFor(anchor)}
             onSlotClick={openSlot}
             onEventClick={openEvent}
           />
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {days.map((d) => (
               <section key={dateKey(d)}>
                 <h3
@@ -327,11 +328,15 @@ function Index() {
                       Today
                     </span>
                   )}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {countForDay(d)} session{countForDay(d) === 1 ? "" : "s"}
+                  </span>
                 </h3>
                 <TimelineGrid
                   rows={rowsForDay(d)}
                   ticks={ticksForDay(d)}
                   dayEnd={config.dayEnd}
+                  now={nowFor(d)}
                   onSlotClick={openSlot}
                   onEventClick={openEvent}
                 />
