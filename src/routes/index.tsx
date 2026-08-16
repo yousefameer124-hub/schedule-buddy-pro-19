@@ -214,7 +214,8 @@ function Index() {
                 <Phone className="h-3.5 w-3.5" /> 011 48008620
               </a>
               <span className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" /> Open · closes 10 PM
+                <Clock className="h-3.5 w-3.5" /> {minutesToLabel(config.dayStart)} –{" "}
+                {minutesToLabel(config.dayEnd % (24 * 60))}
               </span>
             </p>
           </div>
