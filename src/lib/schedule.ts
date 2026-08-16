@@ -54,6 +54,13 @@ export const SESSION_TYPES: { id: SessionType; label: string }[] = [
 export const DEFAULT_DAY_START = 12 * 60;
 export const DEFAULT_DAY_END = 24 * 60;
 
+/**
+ * Backward-compatible aliases for modules retained by Vite during hot updates.
+ * New code should read the active hours from ClinicConfig instead.
+ */
+export const DAY_START = DEFAULT_DAY_START;
+export const DAY_END = DEFAULT_DAY_END;
+
 export type ClinicConfig = {
   dayStart: number;
   dayEnd: number;
