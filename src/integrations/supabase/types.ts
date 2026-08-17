@@ -123,13 +123,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "appointments_patient_package_id_fkey"
-            columns: ["patient_package_id"]
-            isOneToOne: false
-            referencedRelation: "patient_session_summary"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "appointments_therapist_id_fkey"
             columns: ["therapist_id"]
             isOneToOne: false
@@ -591,13 +584,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "payments_patient_package_id_fkey"
-            columns: ["patient_package_id"]
-            isOneToOne: false
-            referencedRelation: "patient_session_summary"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "payments_therapist_id_fkey"
             columns: ["therapist_id"]
             isOneToOne: false
@@ -898,56 +884,7 @@ export type Database = {
       }
     }
     Views: {
-      patient_session_summary: {
-        Row: {
-          active: boolean | null
-          end_date: string | null
-          id: string | null
-          name: string | null
-          patient_id: string | null
-          sessions_cancelled: number | null
-          sessions_completed: number | null
-          sessions_missed: number | null
-          sessions_remaining: number | null
-          start_date: string | null
-          total_sessions: number | null
-        }
-        Insert: {
-          active?: boolean | null
-          end_date?: string | null
-          id?: string | null
-          name?: string | null
-          patient_id?: string | null
-          sessions_cancelled?: number | null
-          sessions_completed?: number | null
-          sessions_missed?: number | null
-          sessions_remaining?: number | null
-          start_date?: string | null
-          total_sessions?: number | null
-        }
-        Update: {
-          active?: boolean | null
-          end_date?: string | null
-          id?: string | null
-          name?: string | null
-          patient_id?: string | null
-          sessions_cancelled?: number | null
-          sessions_completed?: number | null
-          sessions_missed?: number | null
-          sessions_remaining?: number | null
-          start_date?: string | null
-          total_sessions?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "patient_packages_patient_id_fkey"
-            columns: ["patient_id"]
-            isOneToOne: false
-            referencedRelation: "patients"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       bootstrap_current_user: {
@@ -965,6 +902,22 @@ export type Database = {
       is_desk: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
       my_therapist_id: { Args: never; Returns: string }
+      patient_sessions: {
+        Args: { _patient_id: string }
+        Returns: {
+          active: boolean
+          end_date: string
+          id: string
+          name: string
+          patient_id: string
+          sessions_cancelled: number
+          sessions_completed: number
+          sessions_missed: number
+          sessions_remaining: number
+          start_date: string
+          total_sessions: number
+        }[]
+      }
       recalc_patient_package: { Args: { _pkg_id: string }; Returns: undefined }
       set_user_role: {
         Args: {
