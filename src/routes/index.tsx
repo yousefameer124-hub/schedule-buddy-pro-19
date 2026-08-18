@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { addDays, format, isSameDay } from "date-fns";
 import {
   CalendarDays,
@@ -20,27 +20,31 @@ import { TimelineGrid, type Row } from "@/components/TimelineGrid";
 import { AppointmentDialog, type Draft } from "@/components/AppointmentDialog";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import {
-  ATTENDANCE_STATUSES,
-  DEFAULT_CONFIG,
+  APPOINTMENT_STATUSES,
+  DEFAULT_DAY_END,
+  DEFAULT_DAY_START,
   DEFAULT_DURATION,
-  SESSION_TYPES,
-  THERAPISTS,
   buildTicks,
   dateKey,
   minutesToLabel,
-  seedAppointments,
   statusBadge,
-  typeClass,
   weekDays,
-  type Appointment,
-  type ClinicConfig,
-  type Therapist,
+  type AppointmentStatus,
+  type CalendarEvent,
 } from "@/lib/schedule";
+import {
+  useAppointmentTypes,
+  useAppointments,
+  useClinicSettings,
+  useMutate,
+  usePatients,
+  useTherapists,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const TITLE = "360 Physio Clinic ALREHAB — Scheduling Calendar";
 const DESC =
-  "Odoo-style scheduling calendar for 360 Physio Clinic ALREHAB in New Cairo: book physiotherapy and sports-injury sessions per therapist by day or week.";
+  "Odoo-style scheduling calendar for 360 Physio Clinic ALREHAB in New Cairo: book physiotherapy and sports-injury sessions per doctor by day or week.";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -49,74 +53,70 @@ export const Route = createFileRoute("/")({
       { name: "description", content: DESC },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESC },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Index,
 });
 
-const STORAGE_KEY = "physio360-appointments";
-const SETTINGS_KEY = "physio360-settings";
-
 function Index() {
   const today = useMemo(() => new Date(), []);
   const [anchor, setAnchor] = useState(today);
   const [view, setView] = useState<"day" | "week">("week");
-  const [appointments, setAppointments] = useState<Appointment[]>(() => seedAppointments(today));
   const [draft, setDraft] = useState<Draft | null>(null);
   const [open, setOpen] = useState(false);
-  const [therapistFilter, setTherapistFilter] = useState<string | "all">("all");
-  const [therapists, setTherapists] = useState<Therapist[]>(THERAPISTS);
-  const [config, setConfig] = useState<ClinicConfig>(DEFAULT_CONFIG);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [therapistFilter, setTherapistFilter] = useState<string | "all">("all");
 
-  useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
-        setAppointments(JSON.parse(raw) as Appointment[]);
-      } catch {
-        /* ignore corrupt storage */
-      }
-    }
-  }, []);
+  const days = useMemo(() => weekDays(anchor), [anchor]);
+  const range = useMemo(
+    () =>
+      view === "week"
+        ? { from: dateKey(days[0]!), to: dateKey(days[6]!) }
+        : { from: dateKey(anchor), to: dateKey(anchor) },
+    [view, days, anchor],
+  );
 
-  useEffect(() => {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as { therapists?: Therapist[]; config?: ClinicConfig };
-        if (parsed.therapists?.length) setTherapists(parsed.therapists);
-        if (parsed.config) setConfig(parsed.config);
-      } catch {
-        /* ignore corrupt storage */
-      }
-    }
-  }, []);
+  const { data: therapists = [] } = useTherapists();
+  const { data: patients = [] } = usePatients();
+  const { data: types = [] } = useAppointmentTypes();
+  const { data: settings } = useClinicSettings();
+  const { data: rowsData = [] } = useAppointments(range.from, range.to);
+  const mutate = useMutate("appointments", "appointment");
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appointments));
-  }, [appointments]);
-
-  const saveSettings = (list: Therapist[], next: ClinicConfig) => {
-    setTherapists(list);
-    setConfig(next);
-    if (therapistFilter !== "all" && !list.some((t) => t.id === therapistFilter)) {
-      setTherapistFilter("all");
-    }
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ therapists: list, config: next }));
-    setSettingsOpen(false);
-    toast.success("Settings saved");
+  const config = {
+    dayStart: settings?.day_start ?? DEFAULT_DAY_START,
+    dayEnd: settings?.day_end ?? DEFAULT_DAY_END,
   };
+
+  const events: CalendarEvent[] = useMemo(
+    () =>
+      rowsData.map((a) => {
+        const type = types.find((t) => t.id === a.appointment_type_id);
+        return {
+          id: a.id,
+          title: a.patients?.full_name ?? a.title ?? "Appointment",
+          patientId: a.patient_id,
+          therapistId: a.therapist_id,
+          color: type?.color ?? "physio",
+          status: a.status,
+          typeName: type?.name ?? "Session",
+          date: a.date,
+          start: a.start_minutes,
+          duration: a.duration_minutes,
+        };
+      }),
+    [rowsData, types],
+  );
 
   const visible = useMemo(
     () =>
       therapistFilter === "all"
-        ? appointments
-        : appointments.filter((a) => a.therapistId === therapistFilter),
-    [appointments, therapistFilter],
+        ? events
+        : events.filter((e) => e.therapistId === therapistFilter),
+    [events, therapistFilter],
   );
-
-  const days = useMemo(() => weekDays(anchor), [anchor]);
 
   const activeTherapists = useMemo(
     () =>
@@ -146,45 +146,78 @@ function Index() {
 
   const openSlot = (rowId: string, minutes: number) => {
     const [date, therapistId] = rowId.split("|");
+    const tid = therapistId ?? therapists[0]?.id;
+    if (!tid) {
+      toast.error("Add a doctor in settings first");
+      return;
+    }
     setDraft({
-      patient: "",
-      therapistId: therapistId ?? therapists[0]!.id,
-      type: "physio",
+      patient_id: null,
+      therapist_id: tid,
+      appointment_type_id: types[0]?.id ?? null,
+      patient_package_id: null,
       date: date ?? dateKey(anchor),
-      start: minutes,
-      duration: DEFAULT_DURATION,
-      status: "scheduled",
+      start_minutes: minutes,
+      duration_minutes: settings?.default_duration ?? DEFAULT_DURATION,
+      status: "scheduled" as AppointmentStatus,
+      notes: "",
     });
     setOpen(true);
   };
 
-  const openEvent = (a: Appointment) => {
-    setDraft(a);
+  const openEvent = (e: CalendarEvent) => {
+    const row = rowsData.find((a) => a.id === e.id);
+    if (!row) return;
+    setDraft({
+      id: row.id,
+      patient_id: row.patient_id,
+      therapist_id: row.therapist_id,
+      appointment_type_id: row.appointment_type_id,
+      patient_package_id: row.patient_package_id,
+      date: row.date,
+      start_minutes: row.start_minutes,
+      duration_minutes: row.duration_minutes,
+      status: row.status,
+      notes: row.notes ?? "",
+    });
     setOpen(true);
   };
 
   const save = (d: Draft) => {
-    if (d.id) {
-      setAppointments((prev) => prev.map((a) => (a.id === d.id ? ({ ...d } as Appointment) : a)));
-      toast.success("Appointment updated");
-    } else {
-      setAppointments((prev) => [
-        ...prev,
-        { ...d, id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}` } as Appointment,
-      ]);
-      toast.success(`Booked ${d.patient} at ${minutesToLabel(d.start)}`);
-    }
-    setOpen(false);
+    const values = {
+      patient_id: d.patient_id,
+      therapist_id: d.therapist_id,
+      appointment_type_id: d.appointment_type_id,
+      patient_package_id: d.patient_package_id,
+      date: d.date,
+      start_minutes: d.start_minutes,
+      duration_minutes: d.duration_minutes,
+      status: d.status,
+      notes: d.notes || null,
+    };
+    mutate.mutate(d.id ? { op: "update", id: d.id, values } : { op: "insert", values }, {
+      onSuccess: () => {
+        toast.success(d.id ? "Appointment updated" : "Appointment booked");
+        setOpen(false);
+      },
+      onError: (e: Error) => toast.error(e.message),
+    });
   };
 
   const remove = (id: string) => {
-    setAppointments((prev) => prev.filter((a) => a.id !== id));
-    setOpen(false);
-    toast.success("Appointment removed");
+    mutate.mutate(
+      { op: "delete", id },
+      {
+        onSuccess: () => {
+          toast.success("Appointment removed");
+          setOpen(false);
+        },
+        onError: (e: Error) => toast.error(e.message),
+      },
+    );
   };
 
-  const step = (dir: 1 | -1) =>
-    setAnchor((prev) => addDays(prev, view === "week" ? 7 * dir : dir));
+  const step = (dir: 1 | -1) => setAnchor((prev) => addDays(prev, view === "week" ? 7 * dir : dir));
 
   const rangeLabel =
     view === "week"
@@ -201,17 +234,20 @@ function Index() {
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4">
           <div>
-            <h1 className="text-xl font-bold">360 Physio Clinic — ALREHAB</h1>
+            <h1 className="text-xl font-bold">
+              {settings?.clinic_name ?? "360 Physio Clinic — ALREHAB"}
+            </h1>
             <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Star className="h-3.5 w-3.5 fill-current text-event-sports" /> 5.0 · Physical
                 therapy clinic in New Cairo
               </span>
               <span className="flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5" /> Ahmed Ben Hanbal, Second New Cairo
+                <MapPin className="h-3.5 w-3.5" />{" "}
+                {settings?.address ?? "Ahmed Ben Hanbal, Second New Cairo"}
               </span>
               <a href="tel:01148008620" className="flex items-center gap-1 hover:text-foreground">
-                <Phone className="h-3.5 w-3.5" /> 011 48008620
+                <Phone className="h-3.5 w-3.5" /> {settings?.phone ?? "011 48008620"}
               </a>
               <span className="flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" /> {minutesToLabel(config.dayStart)} –{" "}
@@ -265,7 +301,12 @@ function Index() {
               Settings
             </Button>
             <Button
-              onClick={() => openSlot(`${dateKey(anchor)}|${activeTherapists[0]!.id}`, config.dayStart)}
+              onClick={() =>
+                openSlot(
+                  `${dateKey(anchor)}|${activeTherapists[0]?.id ?? ""}`,
+                  config.dayStart,
+                )
+              }
             >
               <Plus className="mr-2 h-4 w-4" />
               New appointment
@@ -283,7 +324,7 @@ function Index() {
                 : "hover:bg-accent",
             )}
           >
-            All therapists
+            All doctors
           </button>
           {therapists.map((t) => (
             <button
@@ -346,52 +387,37 @@ function Index() {
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
-          {SESSION_TYPES.map((t) => (
-            <span key={t.id} className="flex items-center gap-1.5">
-              <span className={cn("h-3 w-3 rounded-sm", typeClass(t.id))} />
-              {t.label}
+        <div className="mt-5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          {APPOINTMENT_STATUSES.map((s) => (
+            <span
+              key={s.id}
+              className={cn("rounded-full px-2 py-0.5 font-medium", statusBadge(s.id))}
+            >
+              {s.mark} {s.label}
             </span>
           ))}
         </div>
-
-        <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
-          {ATTENDANCE_STATUSES.map((s) => (
-            <span key={s.id} className="flex items-center gap-1.5">
-              <span className={cn("rounded-sm px-1.5 py-0.5 text-[10px]", statusBadge(s.id))}>
-                {s.short}
-              </span>
-            </span>
-          ))}
-        </div>
-
-        <p className="mt-6 text-xs text-muted-foreground">
-          Click any empty slot to book a session, or click a session to reschedule it. Working hours
-          {minutesToLabel(config.dayStart)} – {minutesToLabel(config.dayEnd % (24 * 60))}, editable
-          in Settings along with the doctor list. Only whole hours get a column; an extra column
-          appears when a patient is booked at 12:30 or any other off-hour time. Sessions default to 60 minutes, and a therapist can take several
-          patients in the same time range — parallel bookings stack inside the row. Mark each
-          patient as showed up, cancelled or no show from the appointment dialog.
-        </p>
       </main>
 
       <AppointmentDialog
-        draft={draft}
         open={open}
         onOpenChange={setOpen}
+        draft={draft}
+        setDraft={setDraft}
+        patients={patients}
+        therapists={therapists}
+        types={types}
+        events={events}
         onSave={save}
         onDelete={remove}
-        therapists={therapists}
-        dayStart={config.dayStart}
-        dayEnd={config.dayEnd}
+        saving={mutate.isPending}
       />
 
       <SettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         therapists={therapists}
-        config={config}
-        onSave={saveSettings}
+        settings={settings ?? null}
       />
     </div>
   );
