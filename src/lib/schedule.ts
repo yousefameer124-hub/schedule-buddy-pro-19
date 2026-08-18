@@ -139,3 +139,26 @@ export const fillTemplate = (body: string, vars: Record<string, string | number>
   body.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, key: string) =>
     key in vars ? String(vars[key]) : `{{${key}}}`,
   );
+
+export const PARTNERS = ["none", "fibers", "shefit"] as const;
+export type Partner = (typeof PARTNERS)[number];
+
+export const PARTNER_LABELS: { id: Partner; label: string }[] = [
+  { id: "none", label: "None" },
+  { id: "fibers", label: "Fibers" },
+  { id: "shefit", label: "SheFit" },
+  ];
+
+export const computeSubtotal = (examinationFee: number, sessionPrice: number, sessions: number) =>
+  Number(examinationFee) + Number(sessionPrice) * Number(sessions);
+
+export const computeFinalTotal = (examinationFee: number, sessionPrice: number, sessions: number, discount: number) =>
+  Math.max(0, computeSubtotal(examinationFee, sessionPrice, sessions) - Number(discount));
+
+export const computeRemaining = (
+  examinationFee: number,
+  sessionPrice: number,
+  sessions: number,
+  discount: number,
+  amountPaid: number,
+) => Math.max(0, computeFinalTotal(examinationFee, sessionPrice, sessions, discount) - Number(amountPaid));
