@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedPackagesRouteImport } from './routes/_authenticated/packages'
 import { Route as AuthenticatedTherapistsRouteImport } from './routes/_authenticated/therapists'
 import { Route as AuthenticatedPatientsIndexRouteImport } from './routes/_authenticated/patients.index'
 import { Route as AuthenticatedPatientsIdRouteImport } from './routes/_authenticated/patients.$id'
@@ -42,6 +43,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPackagesRoute = AuthenticatedPackagesRouteImport.update({
+  id: '/packages',
+  path: '/packages',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedTherapistsRoute = AuthenticatedTherapistsRouteImport.update({
   id: '/therapists',
   path: '/therapists',
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/packages': typeof AuthenticatedPackagesRoute
   '/therapists': typeof AuthenticatedTherapistsRoute
   '/patients/$id': typeof AuthenticatedPatientsIdRoute
   '/patients/': typeof AuthenticatedPatientsIndexRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/packages': typeof AuthenticatedPackagesRoute
   '/therapists': typeof AuthenticatedTherapistsRoute
   '/patients/$id': typeof AuthenticatedPatientsIdRoute
   '/patients': typeof AuthenticatedPatientsIndexRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/packages': typeof AuthenticatedPackagesRoute
   '/_authenticated/therapists': typeof AuthenticatedTherapistsRoute
   '/_authenticated/patients/$id': typeof AuthenticatedPatientsIdRoute
   '/_authenticated/patients/': typeof AuthenticatedPatientsIndexRoute
@@ -95,6 +104,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/dashboard'
+    | '/packages'
     | '/therapists'
     | '/patients/$id'
     | '/patients/'
@@ -104,6 +114,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/dashboard'
+    | '/packages'
     | '/therapists'
     | '/patients/$id'
     | '/patients'
@@ -114,6 +125,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/calendar'
     | '/_authenticated/dashboard'
+    | '/_authenticated/packages'
     | '/_authenticated/therapists'
     | '/_authenticated/patients/$id'
     | '/_authenticated/patients/'
@@ -162,6 +174,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/packages': {
+      id: '/_authenticated/packages'
+      path: '/packages'
+      fullPath: '/packages'
+      preLoaderRoute: typeof AuthenticatedPackagesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/therapists': {
       id: '/_authenticated/therapists'
       path: '/therapists'
@@ -189,6 +208,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedPackagesRoute: typeof AuthenticatedPackagesRoute
   AuthenticatedTherapistsRoute: typeof AuthenticatedTherapistsRoute
   AuthenticatedPatientsIdRoute: typeof AuthenticatedPatientsIdRoute
   AuthenticatedPatientsIndexRoute: typeof AuthenticatedPatientsIndexRoute
@@ -197,6 +217,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedPackagesRoute: AuthenticatedPackagesRoute,
   AuthenticatedTherapistsRoute: AuthenticatedTherapistsRoute,
   AuthenticatedPatientsIdRoute: AuthenticatedPatientsIdRoute,
   AuthenticatedPatientsIndexRoute: AuthenticatedPatientsIndexRoute,
