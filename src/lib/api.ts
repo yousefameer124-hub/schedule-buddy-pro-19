@@ -125,7 +125,7 @@ export const usePackages = () =>
 export const usePatientSessions = (patientId: string | null) =>
   useQuery({
     queryKey: ["patient_sessions", patientId],
-    queryFn: () => rows(supabase.rpc("patient_sessions", { _patient_id: patientId })),
+    queryFn: () => rows(supabase.rpc("patient_sessions", { _patient_id: patientId as string })),
   });
 
 /** Full patient package rows including money — admin only by RLS. */
