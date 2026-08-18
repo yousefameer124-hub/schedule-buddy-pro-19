@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
-import { format } from "date-fns";
-import { Trash2 } from "lucide-react";
+import { useMemo } from "react";
+import { AlertTriangle, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,122 +20,118 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  ATTENDANCE_STATUSES,
-  SESSION_TYPES,
-  SLOT,
+  APPOINTMENT_STATUSES,
+  DURATION_OPTIONS,
+  START_OPTIONS,
   minutesToLabel,
-  type Appointment,
-  type Therapist,
-  type AttendanceStatus,
-  type SessionType,
+  type AppointmentStatus,
+  type CalendarEvent,
 } from "@/lib/schedule";
+import type { AppointmentType, Patient, Therapist } from "@/lib/api";
 
-export type Draft = Omit<Appointment, "id"> & { id?: string };
-
-const durations = [30, 45, 60, 90, 120];
+export type Draft = {
+  id?: string;
+  patient_id: string | null;
+  therapist_id: string;
+  appointment_type_id: string | null;
+  patient_package_id: string | null;
+  date: string;
+  start_minutes: number;
+  duration_minutes: number;
+  status: AppointmentStatus;
+  notes: string;
+};
 
 export function AppointmentDialog({
-  draft,
   open,
   onOpenChange,
+  draft,
+  setDraft,
+  patients,
+  therapists,
+  types,
+  events,
   onSave,
   onDelete,
-  therapists,
-  dayStart,
-  dayEnd,
+  saving,
 }: {
-  draft: Draft | null;
   open: boolean;
-  onOpenChange: (o: boolean) => void;
+  onOpenChange: (v: boolean) => void;
+  draft: Draft | null;
+  setDraft: (d: Draft) => void;
+  patients: Patient[];
+  therapists: Therapist[];
+  types: AppointmentType[];
+  events: CalendarEvent[];
   onSave: (d: Draft) => void;
   onDelete: (id: string) => void;
-  therapists: Therapist[];
-  dayStart: number;
-  dayEnd: number;
+  saving?: boolean;
 }) {
-  const [value, setValue] = useState<Draft | null>(draft);
+  const therapist = therapists.find((t) => t.id === draft?.therapist_id);
 
-  useEffect(() => setValue(draft), [draft]);
+  const conflict = useMemo(() => {
+    if (!draft) return null;
+    const end = draft.start_minutes + draft.duration_minutes;
+    const clash = events.find(
+      (e) =>
+        e.id !== draft.id &&
+        e.date === draft.date &&
+        e.therapistId === draft.therapist_id &&
+        e.status !== "cancelled" &&
+        e.start < end &&
+        draft.start_minutes < e.start + e.duration,
+    );
+    if (clash)
+      return `${therapist?.name ?? "This doctor"} already has ${clash.title} at ${minutesToLabel(clash.start)}.`;
+    if (therapist) {
+      const day = new Date(`${draft.date}T00:00:00`).getDay();
+      if (!(therapist.working_days ?? []).includes(day))
+        return `${therapist.name} does not work on this weekday.`;
+      if (draft.start_minutes < therapist.work_start || end > therapist.work_end)
+        return `Outside ${therapist.name}'s hours (${minutesToLabel(therapist.work_start)} – ${minutesToLabel(therapist.work_end)}).`;
+    }
+    return null;
+  }, [draft, events, therapist]);
 
-  if (!value) return null;
-
-  const isNew = !value.id;
-  const slotOptions = Array.from(
-    { length: Math.max(1, Math.ceil((dayEnd - dayStart) / SLOT)) },
-    (_, i) => dayStart + i * SLOT,
-  );
-  const startOptions = slotOptions.includes(value.start)
-    ? slotOptions
-    : [...slotOptions, value.start].sort((a, b) => a - b);
+  if (!draft) return null;
+  const set = (patch: Partial<Draft>) => setDraft({ ...draft, ...patch });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isNew ? "New appointment" : "Edit appointment"}</DialogTitle>
+          <DialogTitle>{draft.id ? "Edit appointment" : "New appointment"}</DialogTitle>
           <DialogDescription>
-            {format(new Date(`${value.date}T00:00:00`), "EEEE, d MMMM yyyy")} ·{" "}
-            {minutesToLabel(value.start)} – {minutesToLabel(value.start + value.duration)}
+            {minutesToLabel(draft.start_minutes)} ·{" "}
+            {minutesToLabel(draft.start_minutes + draft.duration_minutes)} · {draft.date}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="patient">Patient / subject</Label>
-            <Input
-              id="patient"
-              value={value.patient}
-              placeholder="e.g. Ahmed Selim"
-              onChange={(e) => setValue({ ...value, patient: e.target.value })}
-            />
+            <Label>Patient</Label>
+            <Select
+              value={draft.patient_id ?? "none"}
+              onValueChange={(v) => set({ patient_id: v === "none" ? null : v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select patient" />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="none">Blocked / internal slot</SelectItem>
+                {patients.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.full_name} · {p.code}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-2 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label>Start</Label>
-              <Select
-                value={String(value.start)}
-                onValueChange={(v) => setValue({ ...value, start: Number(v) })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {startOptions.map((s) => (
-                    <SelectItem key={s} value={String(s)}>
-                      {minutesToLabel(s)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>Duration</Label>
-              <Select
-                value={String(value.duration)}
-                onValueChange={(v) => setValue({ ...value, duration: Number(v) })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {durations.map((d) => (
-                    <SelectItem key={d} value={String(d)}>
-                      {d} min
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-2">
-              <Label>Therapist</Label>
-              <Select
-                value={value.therapistId}
-                onValueChange={(v) => setValue({ ...value, therapistId: v })}
-              >
+              <Label>Doctor</Label>
+              <Select value={draft.therapist_id} onValueChange={(v) => set({ therapist_id: v })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -152,16 +147,71 @@ export function AppointmentDialog({
             <div className="grid gap-2">
               <Label>Session type</Label>
               <Select
-                value={value.type}
-                onValueChange={(v) => setValue({ ...value, type: v as SessionType })}
+                value={draft.appointment_type_id ?? "none"}
+                onValueChange={(v) => {
+                  const t = types.find((x) => x.id === v);
+                  set({
+                    appointment_type_id: v === "none" ? null : v,
+                    duration_minutes: t?.duration_minutes ?? draft.duration_minutes,
+                  });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Unspecified</SelectItem>
+                  {types.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2">
+              <Label htmlFor="ap-date">Date</Label>
+              <Input
+                id="ap-date"
+                type="date"
+                value={draft.date}
+                onChange={(e) => set({ date: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Start</Label>
+              <Select
+                value={String(draft.start_minutes)}
+                onValueChange={(v) => set({ start_minutes: Number(v) })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {START_OPTIONS.map((m) => (
+                    <SelectItem key={m} value={String(m)}>
+                      {minutesToLabel(m)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Duration</Label>
+              <Select
+                value={String(draft.duration_minutes)}
+                onValueChange={(v) => set({ duration_minutes: Number(v) })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {SESSION_TYPES.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.label}
+                  {DURATION_OPTIONS.map((d) => (
+                    <SelectItem key={d} value={String(d)}>
+                      {d} min
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -170,50 +220,49 @@ export function AppointmentDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label>Attendance</Label>
+            <Label>Attendance / status</Label>
             <Select
-              value={value.status ?? "scheduled"}
-              onValueChange={(v) => setValue({ ...value, status: v as AttendanceStatus })}
+              value={draft.status}
+              onValueChange={(v) => set({ status: v as AppointmentStatus })}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {ATTENDANCE_STATUSES.map((s) => (
+                {APPOINTMENT_STATUSES.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              Completed sessions are deducted from the patient's package automatically.
+            </p>
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="phone">Phone</Label>
-            <Input
-              id="phone"
-              value={value.phone ?? ""}
-              placeholder="011 48008620"
-              onChange={(e) => setValue({ ...value, phone: e.target.value })}
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="note">Notes</Label>
+            <Label htmlFor="ap-notes">Notes</Label>
             <Textarea
-              id="note"
+              id="ap-notes"
               rows={2}
-              value={value.note ?? ""}
-              placeholder="Injury, referral, treatment plan…"
-              onChange={(e) => setValue({ ...value, note: e.target.value })}
+              value={draft.notes}
+              onChange={(e) => set({ notes: e.target.value })}
+              placeholder="Optional"
             />
           </div>
 
+          {conflict && (
+            <p className="flex items-start gap-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {conflict}
+            </p>
+          )}
         </div>
 
-        <DialogFooter className="sm:justify-between">
-          {!isNew ? (
-            <Button variant="ghost" onClick={() => onDelete(value.id!)}>
+        <DialogFooter className="gap-2 sm:justify-between">
+          {draft.id ? (
+            <Button variant="destructive" onClick={() => onDelete(draft.id!)}>
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </Button>
@@ -224,11 +273,8 @@ export function AppointmentDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              disabled={value.patient.trim().length === 0}
-              onClick={() => onSave(value)}
-            >
-              {isNew ? "Book session" : "Save"}
+            <Button onClick={() => onSave(draft)} disabled={!!conflict || saving}>
+              {draft.id ? "Save changes" : "Book session"}
             </Button>
           </div>
         </DialogFooter>
