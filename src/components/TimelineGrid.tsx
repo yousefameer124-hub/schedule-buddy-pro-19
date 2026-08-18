@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { minutesToLabel, statusMeta, typeClass, type CalendarEvent } from "@/lib/schedule";
+import { minutesToLabel, statusBadge, typeClass, type Appointment } from "@/lib/schedule";
 
 export const SLOT_WIDTH = 96;
 export const ROW_HEIGHT = 60;
@@ -7,7 +7,7 @@ const LANE_HEIGHT = 46;
 const HEADER_HEIGHT = 44;
 
 /** assign each appointment a lane so simultaneous patients stack instead of overlap */
-const layout = (list: CalendarEvent[]) => {
+const layout = (list: Appointment[]) => {
   const sorted = [...list].sort((a, b) => a.start - b.start || a.duration - b.duration);
   const laneEnds: number[] = [];
   const placed = sorted.map((a) => {
@@ -25,8 +25,9 @@ const layout = (list: CalendarEvent[]) => {
 export type Row = {
   id: string;
   label: string;
+  sublabel?: string;
   highlight?: boolean;
-  appointments: CalendarEvent[];
+  appointments: Appointment[];
 };
 
 export function TimelineGrid({
@@ -38,18 +39,21 @@ export function TimelineGrid({
   onEventClick,
 }: {
   rows: Row[];
+  /** column start minutes: whole hours plus any off-hour appointment start */
   ticks: number[];
   dayEnd: number;
+  /** minutes from midnight for the "now" marker, when this grid shows today */
   now?: number | undefined;
   onSlotClick: (rowId: string, minutes: number) => void;
-  onEventClick: (appointment: CalendarEvent) => void;
+  onEventClick: (appointment: Appointment) => void;
 }) {
-  const ends = ticks.map((_t, i) => ticks[i + 1] ?? dayEnd);
+  const ends = ticks.map((t, i) => ticks[i + 1] ?? dayEnd);
   const width = ticks.length * SLOT_WIDTH;
 
   const laid = rows.map((r) => layout(r.appointments));
   const heights = laid.map(({ lanes }) => Math.max(ROW_HEIGHT, lanes * LANE_HEIGHT + 12));
 
+  /** pixel offset / width for an appointment across variable-length columns */
   const place = (start: number, duration: number) => {
     const end = start + duration;
     let left = 0;
@@ -77,7 +81,8 @@ export function TimelineGrid({
   return (
     <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
       <div className="flex min-w-max">
-        <div className="sticky left-0 z-20 w-40 shrink-0 border-r bg-card sm:w-48">
+        {/* left sticky labels */}
+        <div className="sticky left-0 z-20 w-48 shrink-0 border-r bg-card">
           <div
             style={{ height: HEADER_HEIGHT }}
             className="flex items-center border-b bg-muted/50 px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
@@ -103,6 +108,7 @@ export function TimelineGrid({
           ))}
         </div>
 
+        {/* time columns */}
         <div className="relative" style={{ width }}>
           <div style={{ height: HEADER_HEIGHT }} className="flex border-b bg-muted/50">
             {ticks.map((m) => (
@@ -145,7 +151,6 @@ export function TimelineGrid({
 
               {laid[ri]!.placed.map(({ a, lane }) => {
                 const pos = place(a.start, a.duration);
-                const meta = statusMeta(a.status);
                 return (
                   <button
                     key={a.id}
@@ -159,19 +164,24 @@ export function TimelineGrid({
                     }}
                     className={cn(
                       "absolute flex items-center gap-1 overflow-hidden rounded-md px-2 py-1 text-left text-[11px] leading-tight shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      typeClass(a.color),
+                      typeClass(a.type),
                       a.status === "cancelled" && "line-through opacity-60",
-                      a.status === "no_show" && "opacity-70",
+                      a.status === "noshow" && "opacity-70",
                     )}
-                    title={`${a.title} · ${a.typeName} · ${minutesToLabel(a.start)} – ${minutesToLabel(a.start + a.duration)} · ${meta.label}`}
+                    title={`${a.patient} · ${minutesToLabel(a.start)} – ${minutesToLabel(a.start + a.duration)}`}
                   >
-                    {a.status !== "scheduled" && (
-                      <span className="shrink-0 rounded-sm bg-background/70 px-1 text-[9px] font-semibold text-foreground no-underline">
-                        {meta.mark}
+                    {a.status && a.status !== "scheduled" && (
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-sm px-1 text-[9px] no-underline",
+                          statusBadge(a.status),
+                        )}
+                      >
+                        {a.status === "showed" ? "✓" : a.status === "cancelled" ? "✕" : "!"}
                       </span>
                     )}
                     <span className="whitespace-normal break-words font-semibold leading-snug">
-                      {a.title}
+                      {a.patient}
                     </span>
                   </button>
                 );
