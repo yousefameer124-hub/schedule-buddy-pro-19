@@ -46,7 +46,7 @@ const TITLE = "360 Physio Clinic ALREHAB — Scheduling Calendar";
 const DESC =
   "Odoo-style scheduling calendar for 360 Physio Clinic ALREHAB in New Cairo: book physiotherapy and sports-injury sessions per doctor by day or week.";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/calendar")({
   head: () => ({
     meta: [
       { title: TITLE },
