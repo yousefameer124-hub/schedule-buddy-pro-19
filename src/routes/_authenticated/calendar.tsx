@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { TimelineGrid, type Row } from "@/components/TimelineGrid";
 import { AppointmentDialog, type Draft } from "@/components/AppointmentDialog";
@@ -229,8 +228,6 @@ function Index() {
 
   return (
     <div className="min-h-screen">
-      <Toaster />
-
       <header className="border-b bg-card">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4">
           <div>
