@@ -183,7 +183,6 @@ export type Database = {
           day_end: number
           day_start: number
           default_duration: number
-          default_examination_fee: number
           default_package_validity: number
           email: string | null
           id: boolean
@@ -204,7 +203,6 @@ export type Database = {
           day_end?: number
           day_start?: number
           default_duration?: number
-          default_examination_fee?: number
           default_package_validity?: number
           email?: string | null
           id?: boolean
@@ -225,7 +223,6 @@ export type Database = {
           day_end?: number
           day_start?: number
           default_duration?: number
-          default_examination_fee?: number
           default_package_validity?: number
           email?: string | null
           id?: boolean
@@ -349,21 +346,14 @@ export type Database = {
         Row: {
           active: boolean
           amount_paid: number
-          billing_notes: string | null
           created_at: string
           created_by: string | null
-          discount: number
           end_date: string | null
-          examination_fee: number
           id: string
           name: string
           package_id: string | null
-          partner: string
           patient_id: string
-          payment_date: string | null
-          payment_method: Database["public"]["Enums"]["payment_method"]
           price: number
-          session_price: number
           sessions_cancelled: number
           sessions_completed: number
           sessions_missed: number
@@ -375,21 +365,14 @@ export type Database = {
         Insert: {
           active?: boolean
           amount_paid?: number
-          billing_notes?: string | null
           created_at?: string
           created_by?: string | null
-          discount?: number
           end_date?: string | null
-          examination_fee?: number
           id?: string
           name?: string
           package_id?: string | null
-          partner?: string
           patient_id: string
-          payment_date?: string | null
-          payment_method?: Database["public"]["Enums"]["payment_method"]
           price?: number
-          session_price?: number
           sessions_cancelled?: number
           sessions_completed?: number
           sessions_missed?: number
@@ -401,21 +384,14 @@ export type Database = {
         Update: {
           active?: boolean
           amount_paid?: number
-          billing_notes?: string | null
           created_at?: string
           created_by?: string | null
-          discount?: number
           end_date?: string | null
-          examination_fee?: number
           id?: string
           name?: string
           package_id?: string | null
-          partner?: string
           patient_id?: string
-          payment_date?: string | null
-          payment_method?: Database["public"]["Enums"]["payment_method"]
           price?: number
-          session_price?: number
           sessions_cancelled?: number
           sessions_completed?: number
           sessions_missed?: number
