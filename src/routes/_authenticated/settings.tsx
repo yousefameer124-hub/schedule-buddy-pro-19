@@ -28,7 +28,7 @@ function SettingsPage() {
         open={open}
         onOpenChange={setOpen}
         therapists={therapists}
-        settings={settings}
+        settings={settings ?? null}
       />
     </div>
   );
