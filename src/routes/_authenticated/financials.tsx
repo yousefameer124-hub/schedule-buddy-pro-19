@@ -45,8 +45,11 @@ function FinancialsPage() {
   const { data: patients = [] } = usePatients();
   const { data: settings } = useClinicSettings();
   const { data: packages = [], isLoading } = usePatientPackages(undefined, isAdmin);
+  const { data: expenses = [], isLoading: expensesLoading } = useExpenses(isAdmin);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PatientPackage | null>(null);
+  const [expenseOpen, setExpenseOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   const patientName = (id: string) => patients.find((p) => p.id === id)?.full_name ?? "—";
   const currency = settings?.currency;
