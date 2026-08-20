@@ -87,6 +87,21 @@ function FinancialsPage() {
     setOpen(true);
   }
 
+  function addExpense() {
+    setEditingExpense(null);
+    setExpenseOpen(true);
+  }
+
+  function editExpense(ex: Expense) {
+    setEditingExpense(ex);
+    setExpenseOpen(true);
+  }
+
+  const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  const netBalance = totals.paid - totalExpenses;
+  const categoryLabel = (id: string) =>
+    EXPENSE_CATEGORIES.find((c) => c.id === id)?.label ?? id;
+
   if (!isAdmin) {
     return (
       <main className="p-6">
