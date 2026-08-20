@@ -5,17 +5,21 @@ import { createFileRouteHead } from "@/lib/page-head";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BillingDialog } from "@/components/BillingDialog";
+import { ExpenseDialog } from "@/components/ExpenseDialog";
 import {
   computeFinalTotal,
   computeRemaining,
   money,
+  EXPENSE_CATEGORIES,
   PARTNER_LABELS,
 } from "@/lib/schedule";
 import {
   useAuth,
   useClinicSettings,
+  useExpenses,
   usePatientPackages,
   usePatients,
+  type Expense,
   type PatientPackage,
 } from "@/lib/api";
 
@@ -41,8 +45,11 @@ function FinancialsPage() {
   const { data: patients = [] } = usePatients();
   const { data: settings } = useClinicSettings();
   const { data: packages = [], isLoading } = usePatientPackages(undefined, isAdmin);
+  const { data: expenses = [], isLoading: expensesLoading } = useExpenses(isAdmin);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PatientPackage | null>(null);
+  const [expenseOpen, setExpenseOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   const patientName = (id: string) => patients.find((p) => p.id === id)?.full_name ?? "—";
   const currency = settings?.currency;
@@ -80,6 +87,21 @@ function FinancialsPage() {
     setOpen(true);
   }
 
+  function addExpense() {
+    setEditingExpense(null);
+    setExpenseOpen(true);
+  }
+
+  function editExpense(ex: Expense) {
+    setEditingExpense(ex);
+    setExpenseOpen(true);
+  }
+
+  const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  const netBalance = totals.paid - totalExpenses;
+  const categoryLabel = (id: string) =>
+    EXPENSE_CATEGORIES.find((c) => c.id === id)?.label ?? id;
+
   if (!isAdmin) {
     return (
       <main className="p-6">
@@ -102,13 +124,25 @@ function FinancialsPage() {
         </Button>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-lg border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Total paid</p>
+          <p className="text-xs text-muted-foreground">Total revenue (paid)</p>
           <p className="text-2xl font-semibold">{money(totals.paid, currency)}</p>
         </div>
         <div className="rounded-lg border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Total outstanding</p>
+          <p className="text-xs text-muted-foreground">Total expenses</p>
+          <p className="text-2xl font-semibold">{money(totalExpenses, currency)}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-xs text-muted-foreground">Net balance</p>
+          <p
+            className={`text-2xl font-semibold ${netBalance < 0 ? "text-destructive" : ""}`}
+          >
+            {money(netBalance, currency)}
+          </p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-xs text-muted-foreground">Outstanding from patients</p>
           <p className="text-2xl font-semibold">{money(totals.outstanding, currency)}</p>
         </div>
         <div className="rounded-lg border bg-card p-4">
@@ -194,7 +228,67 @@ function FinancialsPage() {
         </table>
       </div>
 
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Expenses</h2>
+          <p className="text-sm text-muted-foreground">Clinic spending records.</p>
+        </div>
+        <Button variant="outline" onClick={addExpense}>
+          <Plus className="mr-1 h-4 w-4" /> Add expense
+        </Button>
+      </div>
+
+      <div className="mt-3 overflow-x-auto rounded-lg border bg-card">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+            <tr>
+              <th className="p-3">Expense</th>
+              <th className="p-3">Category</th>
+              <th className="p-3">Date</th>
+              <th className="p-3">Method</th>
+              <th className="p-3">Note</th>
+              <th className="p-3 text-right">Amount</th>
+              <th className="p-3" />
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {expensesLoading && (
+              <tr>
+                <td className="p-3 text-muted-foreground" colSpan={7}>
+                  Loading…
+                </td>
+              </tr>
+            )}
+            {!expensesLoading && expenses.length === 0 && (
+              <tr>
+                <td className="p-3 text-muted-foreground" colSpan={7}>
+                  No expenses recorded yet.
+                </td>
+              </tr>
+            )}
+            {expenses.map((ex) => (
+              <tr key={ex.id} className="hover:bg-accent/40">
+                <td className="p-3 font-medium">{ex.name}</td>
+                <td className="p-3">
+                  <Badge variant="secondary">{categoryLabel(ex.category)}</Badge>
+                </td>
+                <td className="p-3 text-muted-foreground">{ex.spent_on}</td>
+                <td className="p-3 capitalize">{ex.method}</td>
+                <td className="p-3 text-muted-foreground">{ex.description ?? "—"}</td>
+                <td className="p-3 text-right font-medium">{money(Number(ex.amount), currency)}</td>
+                <td className="p-3 text-right">
+                  <Button size="sm" variant="ghost" onClick={() => editExpense(ex)}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       <BillingDialog open={open} onOpenChange={setOpen} pkg={editing} />
+      <ExpenseDialog open={expenseOpen} onOpenChange={setExpenseOpen} expense={editingExpense} />
     </main>
   );
 }
