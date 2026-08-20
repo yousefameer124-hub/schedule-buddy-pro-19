@@ -5,17 +5,21 @@ import { createFileRouteHead } from "@/lib/page-head";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BillingDialog } from "@/components/BillingDialog";
+import { ExpenseDialog } from "@/components/ExpenseDialog";
 import {
   computeFinalTotal,
   computeRemaining,
   money,
+  EXPENSE_CATEGORIES,
   PARTNER_LABELS,
 } from "@/lib/schedule";
 import {
   useAuth,
   useClinicSettings,
+  useExpenses,
   usePatientPackages,
   usePatients,
+  type Expense,
   type PatientPackage,
 } from "@/lib/api";
 
