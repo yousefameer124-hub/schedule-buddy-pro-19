@@ -110,22 +110,11 @@ export function AppointmentDialog({
         <div className="grid gap-4">
           <div className="grid gap-2">
             <Label>Patient</Label>
-            <Select
-              value={draft.patient_id ?? "none"}
-              onValueChange={(v) => set({ patient_id: v === "none" ? null : v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select patient" />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                <SelectItem value="none">Blocked / internal slot</SelectItem>
-                {patients.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.full_name} · {p.code}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <PatientPicker
+              patients={patients}
+              value={draft.patient_id}
+              onChange={(v) => set({ patient_id: v })}
+            />
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2">
