@@ -281,3 +281,80 @@ export function AppointmentDialog({
     </Dialog>
   );
 }
+
+function PatientPicker({
+  patients,
+  value,
+  onChange,
+}: {
+  patients: Patient[];
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = patients.find((p) => p.id === value) ?? null;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+        >
+          <span className={cn(!selected && "text-muted-foreground")}>
+            {selected ? `${selected.full_name} · ${selected.code}` : "Blocked / internal slot"}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command
+          filter={(itemValue, search) =>
+            itemValue.toLowerCase().includes(search.toLowerCase().trim()) ? 1 : 0
+          }
+        >
+          <CommandInput placeholder="Search name or phone…" />
+          <CommandList>
+            <CommandEmpty>No matching patient.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="blocked internal slot"
+                onSelect={() => {
+                  onChange(null);
+                  setOpen(false);
+                }}
+              >
+                <Check className={cn("mr-2 h-4 w-4", value ? "opacity-0" : "opacity-100")} />
+                Blocked / internal slot
+              </CommandItem>
+              {patients.map((p) => (
+                <CommandItem
+                  key={p.id}
+                  value={[p.full_name, p.code, p.phone ?? "", p.whatsapp ?? ""].join(" ")}
+                  onSelect={() => {
+                    onChange(p.id);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn("mr-2 h-4 w-4", value === p.id ? "opacity-100" : "opacity-0")}
+                  />
+                  <span className="flex flex-col">
+                    <span>{p.full_name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {p.code}
+                      {p.phone ? ` · ${p.phone}` : ""}
+                      {p.whatsapp && p.whatsapp !== p.phone ? ` · ${p.whatsapp}` : ""}
+                    </span>
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
