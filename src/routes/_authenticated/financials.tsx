@@ -124,13 +124,25 @@ function FinancialsPage() {
         </Button>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-lg border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Total paid</p>
+          <p className="text-xs text-muted-foreground">Total revenue (paid)</p>
           <p className="text-2xl font-semibold">{money(totals.paid, currency)}</p>
         </div>
         <div className="rounded-lg border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Total outstanding</p>
+          <p className="text-xs text-muted-foreground">Total expenses</p>
+          <p className="text-2xl font-semibold">{money(totalExpenses, currency)}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-xs text-muted-foreground">Net balance</p>
+          <p
+            className={`text-2xl font-semibold ${netBalance < 0 ? "text-destructive" : ""}`}
+          >
+            {money(netBalance, currency)}
+          </p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-xs text-muted-foreground">Outstanding from patients</p>
           <p className="text-2xl font-semibold">{money(totals.outstanding, currency)}</p>
         </div>
         <div className="rounded-lg border bg-card p-4">
